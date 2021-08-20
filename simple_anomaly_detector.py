@@ -61,13 +61,16 @@ class SimpleAnomalyDetector:
     def detect(self, df:pd.DataFrame) -> List:
         anomaly_report = []
         for cor_feature in self.cf:
+            x_vec = df.iloc[:, cor_feature.feature1].values.reshape(-1,1)
+            y_vec = df.iloc[:, cor_feature.feature2].values.reshape(-1,1)
+            Y_vec_pred = cor_feature.lin_reg.predict(x_vec)
+            cf_col_name_1 = df.columns[cor_feature.feature1]
+            cf_col_name_2 = df.columns[cor_feature.feature2]
             for rowindex in range (0, df.last_valid_index()):
-                X = df.iloc[:, cor_feature.feature1].values.reshape(-1,1)
-                Y = df.iloc[:, cor_feature.feature2].values.reshape(-1,1)
-                point_y = Y[rowindex][0]
-                y_pred = cor_feature.lin_reg.predict(X)[rowindex][0]
+                point_y = y_vec[rowindex][0]
+                y_pred = Y_vec_pred[rowindex][0]
                 if abs(y_pred - point_y) > cor_feature.threshold[0]:
-                    desc = df.columns[cor_feature.feature1] + " - " +  df.columns[cor_feature.feature2]
+                    desc = cf_col_name_1 + " - " +  cf_col_name_2
                     anomaly_report.append(AnomalyReport(desc, rowindex + 1))
 
         return anomaly_report
@@ -82,10 +85,10 @@ def printReport(report:List) ->None:
     print('-' * 20, "End of report", '-' * 20)
 
 def main():
-    df = pd.read_csv("train.csv")
+    df = pd.read_csv("new_reg_flight.csv")
     anomaly_detector = SimpleAnomalyDetector(0.9)
     anomaly_detector.learn_normal(df)
-    report = anomaly_detector.detect(pd.read_csv("test.csv"))
+    report = anomaly_detector.detect(pd.read_csv("anomaly_flight.csv"))
     printReport(report)
 
 if __name__ == "__main__":
