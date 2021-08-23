@@ -63,12 +63,12 @@ class SimpleAnomalyDetector:
         for cor_feature in self.cf:
             x_vec = df.iloc[:, cor_feature.feature1].values.reshape(-1,1)
             y_vec = df.iloc[:, cor_feature.feature2].values.reshape(-1,1)
-            Y_vec_pred = cor_feature.lin_reg.predict(x_vec)
+            y_vec_pred = cor_feature.lin_reg.predict(x_vec)
             cf_col_name_1 = df.columns[cor_feature.feature1]
             cf_col_name_2 = df.columns[cor_feature.feature2]
             for rowindex in range (0, df.last_valid_index()):
                 point_y = y_vec[rowindex][0]
-                y_pred = Y_vec_pred[rowindex][0]
+                y_pred = y_vec_pred[rowindex][0]
                 if abs(y_pred - point_y) > cor_feature.threshold[0]:
                     desc = cf_col_name_1 + " - " +  cf_col_name_2
                     anomaly_report.append(AnomalyReport(desc, rowindex + 1))
