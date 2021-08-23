@@ -2,18 +2,8 @@ from dataclasses import dataclass
 from typing import List
 import pandas as pd
 import numpy as np
+from pandas.core.frame import DataFrame
 from sklearn.linear_model import LinearRegression
-
-"""""""""""""""""""""""""""""""""
-Correlated Features structure.
-"""""""""""""""""""""""""""""""""
-@dataclass
-class CorrelatedFeatures:
-    feature1:str
-    feature2:str
-    correlation:float
-    lin_reg:LinearRegression
-    threshold:float
 
 """""""""""""""""""""""""""""""""
 Anomaly Report structure.
@@ -27,9 +17,10 @@ class AnomalyReport:
 A class for an anomaly detector using linear regression.
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 class SimpleAnomalyDetector:
+    column_names = ["feature1_index", "feature2_index", "correlation", "lin_reg", "threshold"]
     def __init__(self, threshold:float=0.9) -> None:
         self.threshold = threshold
-        self.cf = []
+        self.cf = pd.DataFrame(columns = SimpleAnomalyDetector.column_names)
 
     """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     Getting a data frame and setting the normal model
@@ -53,26 +44,27 @@ class SimpleAnomalyDetector:
                 if abs(Y[i] - y_pred[i]) > max:
                     max = abs(Y[i] - y_pred[i])
             max = max * 1.1
-            self.cf.append(CorrelatedFeatures(colindex[0], colindex[1], pearson_frame.iloc[colindex[0], colindex[1]], linear_reg, max))
+            self.cf = self.cf.append({"feature1_index" : colindex[0], "feature2_index" : colindex[1], 
+                                    "correlation" : pearson_frame.iloc[colindex[0], colindex[1]], 
+                                    "lin_reg" : linear_reg, "threshold" : max}, ignore_index=True)
 
     """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     Checking if there's an anomaly from the normal model
     """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     def detect(self, df:pd.DataFrame) -> List:
         anomaly_report = []
-        for cor_feature in self.cf:
-            x_vec = df.iloc[:, cor_feature.feature1].values.reshape(-1,1)
-            y_vec = df.iloc[:, cor_feature.feature2].values.reshape(-1,1)
-            y_vec_pred = cor_feature.lin_reg.predict(x_vec)
-            cf_col_name_1 = df.columns[cor_feature.feature1]
-            cf_col_name_2 = df.columns[cor_feature.feature2]
+        for index, cf_row in self.cf.iterrows():
+            x_vec = df.iloc[:, cf_row["feature1_index"]].values.reshape(-1,1)
+            y_vec = df.iloc[:, cf_row["feature2_index"]].values.reshape(-1,1)
+            y_vec_pred = cf_row["lin_reg"].predict(x_vec)
+            cf_col_name_1 = df.columns[cf_row["feature1_index"]]
+            cf_col_name_2 = df.columns[cf_row["feature2_index"]]
             for rowindex in range (0, df.last_valid_index()):
                 point_y = y_vec[rowindex][0]
                 y_pred = y_vec_pred[rowindex][0]
-                if abs(y_pred - point_y) > cor_feature.threshold[0]:
+                if abs(y_pred - point_y) > cf_row["threshold"][0]:
                     desc = cf_col_name_1 + " - " +  cf_col_name_2
                     anomaly_report.append(AnomalyReport(desc, rowindex + 1))
-
         return anomaly_report
 
 """""""""""""""""""""""""""""""""""""""""""""
